@@ -1,156 +1,260 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useSearchParams, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useOrders } from '@/hooks/useOrders';
 import { orderStatuses, formatPrice } from '@/lib/data';
-import { MapPin, Phone, MessageCircle, Bike, Clock, CheckCircle2, Star } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { MapPin, Phone, MessageCircle, Bike, Clock, CheckCircle2, Star, Package, ChefHat, ClipboardList, Home, RefreshCw } from 'lucide-react';
 
-const trackingData = {
-  id: 'FD123455',
-  status: 'out-for-delivery',
-  estimatedTime: '10 mins',
-  driver: { name: 'Abdul Ibrahim', phone: '+234 805 123 4567', rating: 4.9, vehicle: 'Motorcycle – ABC 123 XY' },
-  items: [{ name: 'Egusi Soup', quantity: 1 }, { name: 'Pounded Yam', quantity: 2 }],
-  total: 8000,
-  steps: [
-    { status: 'pending', time: '1:30 PM', completed: true },
-    { status: 'confirmed', time: '1:32 PM', completed: true },
-    { status: 'preparing', time: '1:35 PM', completed: true },
-    { status: 'ready', time: '2:00 PM', completed: true },
-    { status: 'out-for-delivery', time: '2:15 PM', completed: true, current: true },
-    { status: 'delivered', time: 'Est. 2:25 PM', completed: false },
-  ],
+const STATUS_ICONS = {
+  pending: ClipboardList,
+  confirmed: CheckCircle2,
+  preparing: ChefHat,
+  ready: Package,
+  'out-for-delivery': Bike,
+  delivered: Home,
+};
+
+const STATUS_PROGRESS = {
+  pending: 5,
+  confirmed: 22,
+  preparing: 44,
+  ready: 66,
+  'out-for-delivery': 84,
+  delivered: 100,
 };
 
 export function TrackPage() {
   const [searchParams] = useSearchParams();
-  const orderId = searchParams.get('orderId') || trackingData.id;
+  const orderId = searchParams.get('orderId');
+  const { orders, advanceStatus } = useOrders();
   const [progress, setProgress] = useState(0);
+  const [eta, setEta] = useState(35);
+
+  const order = orderId ? orders.find((o) => o.id === orderId) : orders[0];
 
   useEffect(() => {
-    const t = setTimeout(() => setProgress(80), 600);
+    if (!order) return;
+    const target = STATUS_PROGRESS[order.status] || 0;
+    const t = setTimeout(() => setProgress(target), 400);
     return () => clearTimeout(t);
-  }, []);
+  }, [order?.status]);
 
-  const currentStatus = orderStatuses.find((s) => s.id === trackingData.status);
+  // countdown
+  useEffect(() => {
+    if (!order || order.status === 'delivered') return;
+    const t = setInterval(() => setEta((p) => Math.max(0, p - 1)), 60000);
+    return () => clearInterval(t);
+  }, [order]);
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900/50 flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <Bike className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No active order</h2>
+          <p className="text-gray-500 mb-6">Place an order and track it here in real time</p>
+          <Link to="/menu">
+            <Button className="bg-gradient-to-r from-food-orange to-food-red rounded-full text-white">Browse Menu</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const currentStatus = orderStatuses.find((s) => s.id === order.status);
+  const isDelivered = order.status === 'delivered';
+  const steps = orderStatuses.map((s, i) => {
+    const stepIndex = orderStatuses.findIndex((x) => x.id === order.status);
+    return {
+      ...s,
+      completed: i <= stepIndex,
+      current: s.id === order.status,
+    };
+  });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900/50 py-8 pb-24 lg:pb-8">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Track Order</h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900/50 py-6 pb-24 lg:pb-8">
+      <div className="max-w-xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Track Order</h1>
+          {/* Demo: advance status */}
+          {!isDelivered && (
+            <button
+              onClick={() => advanceStatus(order.id)}
+              className="flex items-center gap-1.5 text-xs text-gray-500 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 hover:border-food-orange hover:text-food-orange transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" /> Simulate update
+            </button>
+          )}
+        </div>
 
-        {/* Status Hero */}
+        {/* Status hero */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          key={order.status}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-food-orange to-food-red rounded-2xl p-6 text-white mb-6"
+          className={`rounded-3xl p-6 text-white mb-5 relative overflow-hidden ${isDelivered ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-food-orange to-food-red'}`}
         >
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-white/70 text-sm">Order #{orderId}</p>
-              <h2 className="text-2xl font-bold">{currentStatus?.label}</h2>
-              <p className="text-white/80 text-sm mt-1">{currentStatus?.description}</p>
-            </div>
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-              <Bike className="w-8 h-8" />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            <span className="font-medium">Arriving in {trackingData.estimatedTime}</span>
-          </div>
-          {/* Progress Bar */}
-          <div className="mt-4 bg-white/20 rounded-full h-2">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 1, ease: 'easeOut' }}
-              className="bg-white h-2 rounded-full"
-            />
-          </div>
-        </motion.div>
-
-        {/* Driver Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 mb-6"
-        >
-          <h3 className="font-bold text-gray-900 dark:text-white mb-4">Delivery Partner</h3>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 bg-gradient-to-br from-food-orange to-food-red rounded-full flex items-center justify-center text-white text-xl font-bold">
-                {trackingData.driver.name.charAt(0)}
-              </div>
+          <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full" />
+          <div className="absolute -right-2 -bottom-8 w-24 h-24 bg-white/10 rounded-full" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white">{trackingData.driver.name}</h4>
-                <div className="flex items-center gap-1 text-yellow-500 text-xs">
-                  <Star className="w-3 h-3 fill-current" />
-                  <span>{trackingData.driver.rating}</span>
-                </div>
-                <p className="text-xs text-gray-500 mt-0.5">{trackingData.driver.vehicle}</p>
+                <p className="text-white/70 text-sm mb-0.5">Order #{order.id}</p>
+                <h2 className="text-2xl font-bold">{currentStatus?.label}</h2>
+                <p className="text-white/80 text-sm mt-1">{currentStatus?.description}</p>
+              </div>
+              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                {isDelivered ? (
+                  <CheckCircle2 className="w-7 h-7" />
+                ) : (
+                  <Bike className="w-7 h-7" />
+                )}
               </div>
             </div>
-            <div className="flex gap-2">
-              <a href={`tel:${trackingData.driver.phone}`} className="w-10 h-10 bg-food-orange/10 rounded-full flex items-center justify-center text-food-orange hover:bg-food-orange hover:text-white transition-colors">
-                <Phone className="w-4 h-4" />
-              </a>
-              <button className="w-10 h-10 bg-food-orange/10 rounded-full flex items-center justify-center text-food-orange hover:bg-food-orange hover:text-white transition-colors">
-                <MessageCircle className="w-4 h-4" />
-              </button>
+            {!isDelivered && (
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="w-4 h-4 text-white/80" />
+                <span className="font-semibold">~{eta} min{eta !== 1 ? 's' : ''} away</span>
+              </div>
+            )}
+            {isDelivered && (
+              <p className="text-white/90 font-medium mb-4">Delivered at {new Date(order.timeline[order.timeline.length - 1]?.time).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}</p>
+            )}
+            {/* Progress bar */}
+            <div className="bg-white/20 rounded-full h-2">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 1.2, ease: 'easeOut' }}
+                className="bg-white h-2 rounded-full"
+              />
             </div>
           </div>
         </motion.div>
 
-        {/* Order Timeline */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 mb-6"
-        >
-          <h3 className="font-bold text-gray-900 dark:text-white mb-4">Order Timeline</h3>
-          <div className="space-y-4">
-            {trackingData.steps.map((step, i) => {
-              const statusInfo = orderStatuses.find((s) => s.id === step.status);
+        {/* Driver card */}
+        {!isDelivered && order.driver && (
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 mb-4">
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3">Delivery Partner</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-food-orange to-food-red rounded-full flex items-center justify-center text-white text-lg font-bold">
+                  {order.driver.name.charAt(0)}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm">{order.driver.name}</p>
+                  <div className="flex items-center gap-1 text-yellow-500">
+                    <Star className="w-3 h-3 fill-current" />
+                    <span className="text-xs font-medium">{order.driver.rating}</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">{order.driver.vehicle}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <a href={`tel:${order.driver.phone}`}
+                  className="w-10 h-10 bg-food-orange/10 rounded-full flex items-center justify-center text-food-orange hover:bg-food-orange hover:text-white transition-colors">
+                  <Phone className="w-4 h-4" />
+                </a>
+                <button className="w-10 h-10 bg-food-orange/10 rounded-full flex items-center justify-center text-food-orange hover:bg-food-orange hover:text-white transition-colors">
+                  <MessageCircle className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Map placeholder */}
+        {!isDelivered && (
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+            className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 mb-4 h-40 relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-50 to-red-50 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-food-orange/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <MapPin className="w-6 h-6 text-food-orange" />
+                </div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Live map</p>
+                <p className="text-xs text-gray-400">Connect Leaflet.js + backend</p>
+              </div>
+            </div>
+            {/* Animated rider dot */}
+            <motion.div
+              animate={{ x: [0, 40, 80, 120, 80], y: [0, -10, 5, -5, 0] }}
+              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute top-1/2 left-1/4 w-6 h-6 bg-food-orange rounded-full flex items-center justify-center shadow-lg"
+            >
+              <Bike className="w-3 h-3 text-white" />
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Timeline */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 mb-4">
+          <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Order Timeline</h3>
+          <div className="space-y-1">
+            {steps.map((step, i) => {
+              const Icon = STATUS_ICONS[step.id] || CheckCircle2;
+              const timeEntry = order.timeline?.find((t) => t.status === step.id);
               return (
-                <div key={step.status} className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    step.completed ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-700'
-                  }`}>
-                    <CheckCircle2 className={`w-4 h-4 ${step.completed ? 'text-green-500' : 'text-gray-400'}`} />
+                <div key={step.id} className="flex items-start gap-3 relative">
+                  {/* Connector line */}
+                  {i < steps.length - 1 && (
+                    <div className={`absolute left-[15px] top-8 w-0.5 h-6 ${step.completed ? 'bg-food-orange' : 'bg-gray-200 dark:bg-gray-700'}`} />
+                  )}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
+                    step.current ? 'bg-food-orange text-white shadow-md shadow-food-orange/30' :
+                    step.completed ? 'bg-green-100 dark:bg-green-900/30 text-green-600' :
+                    'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
+                    <Icon className="w-4 h-4" />
                   </div>
-                  <div className="flex-1">
-                    <p className={`text-sm font-medium ${step.current ? 'text-food-orange' : step.completed ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
-                      {statusInfo?.label}
-                    </p>
-                    <p className="text-xs text-gray-500">{statusInfo?.description}</p>
+                  <div className="flex-1 pb-5">
+                    <div className="flex items-center justify-between">
+                      <p className={`text-sm font-medium ${step.current ? 'text-food-orange' : step.completed ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                        {step.label}
+                        {step.current && (
+                          <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="ml-2 text-xs">●</motion.span>
+                        )}
+                      </p>
+                      {timeEntry && (
+                        <span className="text-xs text-gray-400">
+                          {new Date(timeEntry.time).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{step.description}</p>
                   </div>
-                  <span className={`text-xs flex-shrink-0 ${step.completed ? 'text-gray-500' : 'text-gray-400'}`}>{step.time}</span>
                 </div>
               );
             })}
           </div>
         </motion.div>
 
-        {/* Order Items */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700"
-        >
-          <h3 className="font-bold text-gray-900 dark:text-white mb-3">Order Items</h3>
-          {trackingData.items.map((item) => (
-            <div key={item.name} className="flex justify-between text-sm py-1">
-              <span className="text-gray-600 dark:text-gray-400">{item.name}</span>
-              <span className="text-gray-700 dark:text-gray-300">× {item.quantity}</span>
-            </div>
-          ))}
+        {/* Order items */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+          className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700">
+          <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3">Your Order</h3>
+          <div className="space-y-2">
+            {order.items.map((item) => (
+              <div key={item.id} className="flex justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">{item.name} ×{item.quantity}</span>
+                <span className="text-gray-700 dark:text-gray-300">{formatPrice(item.price * item.quantity)}</span>
+              </div>
+            ))}
+          </div>
           <div className="border-t border-gray-100 dark:border-gray-700 mt-3 pt-3 flex justify-between font-bold">
             <span className="text-gray-900 dark:text-white">Total</span>
-            <span className="text-food-orange">{formatPrice(trackingData.total)}</span>
+            <span className="text-food-orange">{formatPrice(order.total)}</span>
           </div>
+          {isDelivered && (
+            <Link to="/orders" className="block mt-3">
+              <Button className="w-full bg-gradient-to-r from-food-orange to-food-red rounded-full text-white text-sm">
+                Rate your order
+              </Button>
+            </Link>
+          )}
         </motion.div>
       </div>
     </div>

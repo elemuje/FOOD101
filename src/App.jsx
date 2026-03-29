@@ -7,6 +7,7 @@ import { Footer } from '@/components/layout/Footer';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { PromoBanner } from '@/components/shared/PromoBanner';
 import { FloatingCartButton } from '@/components/shared/FloatingCartButton';
+import { InstallBanner } from '@/components/shared/InstallBanner';
 
 import { HomePage } from '@/pages/HomePage';
 import { MenuPage } from '@/pages/MenuPage';
@@ -15,12 +16,11 @@ import { CheckoutPage } from '@/pages/CheckoutPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { TrackPage } from '@/pages/TrackPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { LoyaltyPage } from '@/pages/LoyaltyPage';
+import { AdminPage } from '@/pages/AdminPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { SignupPage } from '@/pages/SignupPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
-
-// Pages that should not show the site chrome (Navbar / Footer)
-const AUTH_PATHS = ['/login', '/signup'];
 
 function AppShell({ children }) {
   return (
@@ -31,6 +31,7 @@ function AppShell({ children }) {
       <Footer />
       <MobileNav />
       <FloatingCartButton />
+      <InstallBanner />
     </div>
   );
 }
@@ -38,35 +39,33 @@ function AppShell({ children }) {
 function App() {
   const { theme, initTheme } = useTheme();
 
-  // Apply persisted theme class on first render
   useEffect(() => {
     initTheme(theme);
   }, []);
 
   return (
     <Routes>
-      {/* Auth pages — minimal layout */}
+      {/* Auth — no chrome */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
 
-      {/* Main app — full chrome */}
-      <Route
-        path="*"
-        element={
-          <AppShell>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/menu" element={<MenuPage />} />
-              <Route path="/cart" element={<CartPage />} />
-              <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/orders" element={<OrdersPage />} />
-              <Route path="/track" element={<TrackPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </AppShell>
-        }
-      />
+      {/* Full app */}
+      <Route path="*" element={
+        <AppShell>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/menu" element={<MenuPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/track" element={<TrackPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/loyalty" element={<LoyaltyPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </AppShell>
+      } />
     </Routes>
   );
 }

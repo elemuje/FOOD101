@@ -68,3 +68,26 @@
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { @apply bg-gray-100 dark:bg-gray-800; }
 ::-webkit-scrollbar-thumb { @apply bg-food-orange/50 rounded-full hover:bg-food-orange transition-colors; }
+
+/* Safe area for iOS bottom bar */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Toast background variable */
+:root { --toast-bg: #1a1a1a; }
+.dark { --toast-bg: #2d2d2d; }
+
+/* Hide scrollbar for category pills */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Smooth tap on mobile */
+@media (hover: none) {
+  * { -webkit-tap-highlight-color: transparent; }
+  button, a { touch-action: manipulation; }
+}
+
+/* Minimum touch targets */
+button, a, [role="button"] { min-height: 44px; min-width: 44px; }
+button.icon-sm, a.icon-sm { min-height: 32px; min-width: 32px; }
